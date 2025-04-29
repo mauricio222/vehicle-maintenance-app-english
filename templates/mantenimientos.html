@@ -104,7 +104,7 @@
 
         <div class="card">
             <div class="card-body">
-                <!-- Filters -->
+                <!-- Filtros -->
                 <div class="row mb-4">
                     <div class="col-md-4">
                         <label for="filtroCategoria" class="form-label">Category</label>
@@ -148,7 +148,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <!-- This table will be filled with JavaScript -->
+                        <!-- Esta tabla se llenará con JavaScript -->
                     </tbody>
                 </table>
 
@@ -167,7 +167,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <!-- This table will be filled with JavaScript -->
+                        <!-- Esta tabla se llenará con JavaScript -->
                     </tbody>
                 </table>
             </div>
@@ -186,7 +186,7 @@
 
     <script>
         $(document).ready(function() {
-            // Prepare data to split into two tables
+            // Preparar los datos para dividir en dos tablas
             var mantenimientos = [];
 
             {% for m in mantenimientos %}
@@ -205,7 +205,7 @@
             });
             {% endfor %}
 
-            // Sort by maintenance type and date (most recent first)
+            // Ordenar por tipo de mantenimiento y fecha (más reciente primero)
             mantenimientos.sort(function(a, b) {
                 if (a.tipo_mantenimiento === b.tipo_mantenimiento) {
                     return b.fecha_iso.localeCompare(a.fecha_iso);
@@ -213,7 +213,7 @@
                 return a.tipo_mantenimiento.localeCompare(b.tipo_mantenimiento);
             });
 
-            // Separate into latest and repeated
+            // Separar en últimos y repetidos
             var ultimosMantenimientos = [];
             var mantenimientosRepetidos = [];
             var tiposVistos = {};
@@ -227,7 +227,7 @@
                 }
             });
 
-            // Function to fill a table with data
+            // Función para llenar una tabla con datos
             function llenarTabla(tablaId, datos) {
                 var tbody = $(tablaId + ' tbody');
                 tbody.empty();
@@ -249,159 +249,313 @@
                         '</tr>';
                     tbody.append(row);
                 });
-
-                // Initialize DataTable
-                if (!$.fn.DataTable.isDataTable(tablaId)) {
-                    $(tablaId).DataTable({
-                        order: [[0, 'desc']],
-                        pageLength: 10,
-                        language: {
-                            search: "Search:",
-                            lengthMenu: "Show _MENU_ entries",
-                            info: "Showing _START_ to _END_ of _TOTAL_ entries",
-                            infoEmpty: "Showing 0 to 0 of 0 entries",
-                            infoFiltered: "(filtered from _MAX_ total entries)",
-                            paginate: {
-                                first: "First",
-                                last: "Last",
-                                next: "Next",
-                                previous: "Previous"
-                            }
-                        }
-                    });
-                } else {
-                    $(tablaId).DataTable().draw();
-                }
             }
 
-            // Fill both tables
+            // Llenar ambas tablas
             llenarTabla('#tablaMantenimientos', ultimosMantenimientos);
             llenarTabla('#tablaMantenimientosRepetidos', mantenimientosRepetidos);
 
-            // Populate filter options
-            var categorias = [...new Set(mantenimientos.map(m => m.categoria))].sort();
-            var tipos = [...new Set(mantenimientos.map(m => m.tipo_mantenimiento))].sort();
-            var mecanicos = [...new Set(mantenimientos.map(m => m.mecanico))].sort();
-
-            categorias.forEach(function(cat) {
-                $('#filtroCategoria').append($('<option>', {
-                    value: cat,
-                    text: cat
-                }));
+            // Inicializar Select2 en los filtros
+            $('#filtroCategoria, #filtroTipo, #filtroMecanico').select2({
+                width: '100%',
+                placeholder: 'Select an option'
             });
 
-            tipos.forEach(function(tipo) {
-                $('#filtroTipo').append($('<option>', {
-                    value: tipo,
-                    text: tipo
-                }));
-            });
-
-            mecanicos.forEach(function(mec) {
-                $('#filtroMecanico').append($('<option>', {
-                    value: mec,
-                    text: mec
-                }));
-            });
-
-            // Apply filters
-            function aplicarFiltros() {
-                var categoria = $('#filtroCategoria').val();
-                var tipo = $('#filtroTipo').val();
-                var mecanico = $('#filtroMecanico').val();
-                var busqueda = $('#searchInput').val().toLowerCase();
-
-                var datosFiltrados = mantenimientos.filter(function(m) {
-                    return (!categoria || m.categoria === categoria) &&
-                           (!tipo || m.tipo_mantenimiento === tipo) &&
-                           (!mecanico || m.mecanico === mecanico) &&
-                           (!busqueda || 
-                            m.fecha.toLowerCase().includes(busqueda) ||
-                            m.kilometraje.toString().includes(busqueda) ||
-                            m.categoria.toLowerCase().includes(busqueda) ||
-                            m.tipo_mantenimiento.toLowerCase().includes(busqueda) ||
-                            m.mecanico.toLowerCase().includes(busqueda) ||
-                            (m.precio && m.precio.toString().includes(busqueda)) ||
-                            (m.fecha_proximo && m.fecha_proximo.toLowerCase().includes(busqueda)) ||
-                            (m.proximo_km && m.proximo_km.toString().includes(busqueda)));
-                });
-
-                // Separate filtered data
-                var ultimosFiltrados = [];
-                var repetidosFiltrados = [];
-                var tiposVistos = {};
-
-                datosFiltrados.forEach(function(m) {
-                    if (!tiposVistos[m.tipo_mantenimiento]) {
-                        ultimosFiltrados.push(m);
-                        tiposVistos[m.tipo_mantenimiento] = true;
-                    } else {
-                        repetidosFiltrados.push(m);
+            // Inicializar DataTables
+            var tablaUltimos = $('#tablaMantenimientos').DataTable({
+                language: {
+                    url: '//cdn.datatables.net/plug-ins/1.11.5/i18n/es-ES.json'
+                },
+                order: [[6, 'asc']],  // Sort by column 6 (Próximo Mantenimiento) ascending
+                pageLength: 100,
+                columnDefs: [
+                    { orderable: true, targets: '_all' },
+                    { targets: 2, visible: false },
+                    {
+                        targets: 0,
+                        type: 'date-eu'
+                    },
+                    {
+                        targets: 6,  // Próximo Mantenimiento column
+                        type: 'date-eu',
+                        orderData: [6],
+                        createdCell: function(cell, cellData, rowData, rowIndex, colIndex) {
+                            $(cell).attr('data-order', cellData ? cellData : '9999-12-31');
+                        }
+                    },
+                    {
+                        targets: 7,  // Próximo Kilometraje column
+                        type: 'num'
                     }
+                ],
+                initComplete: function() {
+                    actualizarFiltros();
+                }
+            });
+
+            var tablaRepetidos = $('#tablaMantenimientosRepetidos').DataTable({
+                language: {
+                    url: '//cdn.datatables.net/plug-ins/1.11.5/i18n/es-ES.json'
+                },
+                order: [[0, 'desc']],  // Sort by date descending
+                pageLength: 100,
+                columnDefs: [
+                    { orderable: true, targets: '_all' },
+                    { targets: 2, visible: false },
+                    {
+                        targets: 0,
+                        type: 'date-eu'
+                    },
+                    {
+                        targets: 6,
+                        type: 'date-eu',
+                        orderData: [6],
+                        createdCell: function(cell, cellData, rowData, rowIndex, colIndex) {
+                            $(cell).attr('data-order', cellData ? cellData : '9999-12-31');
+                        }
+                    },
+                    {
+                        targets: 7,
+                        type: 'num'
+                    }
+                ]
+            });
+
+            // Función para actualizar opciones de los filtros
+            function actualizarFiltros() {
+                // Recolectar datos de ambas tablas
+                var datosAplicados = tablaUltimos.rows({ search: 'applied' }).data();
+                var datosAplicadosRepetidos = tablaRepetidos.rows({ search: 'applied' }).data();
+
+                var tipos = new Set();
+                var mecanicos = new Set();
+
+                // Procesar datos de la primera tabla
+                datosAplicados.each(function(row) {
+                    tipos.add(row[3]);
+                    mecanicos.add(row[4]);
                 });
 
-                // Update tables
-                llenarTabla('#tablaMantenimientos', ultimosFiltrados);
-                llenarTabla('#tablaMantenimientosRepetidos', repetidosFiltrados);
+                // Procesar datos de la segunda tabla
+                datosAplicadosRepetidos.each(function(row) {
+                    tipos.add(row[3]);
+                    mecanicos.add(row[4]);
+                });
+
+                // Para Categoría, usar datos de todas las filas
+                var datosTodos = tablaUltimos.rows().data();
+                var datosTodosRepetidos = tablaRepetidos.rows().data();
+                var todasCategorias = new Set();
+
+                datosTodos.each(function(row) {
+                    todasCategorias.add(row[2]);
+                });
+
+                datosTodosRepetidos.each(function(row) {
+                    todasCategorias.add(row[2]);
+                });
+
+                actualizarSelect('#filtroCategoria', Array.from(todasCategorias).sort());
+                actualizarSelect('#filtroTipo', Array.from(tipos).sort());
+                actualizarSelect('#filtroMecanico', Array.from(mecanicos).sort());
             }
 
-            // Event listeners for filters
-            $('#filtroCategoria, #filtroTipo, #filtroMecanico').change(aplicarFiltros);
-            $('#searchInput').on('keyup', aplicarFiltros);
+            function actualizarSelect(selector, valores) {
+                var select = $(selector);
+                var currentVal = select.val();
+                select.empty().append('<option value="">' + (selector === '#filtroCategoria' ? 'All categories' :
+                                                           selector === '#filtroTipo' ? 'All types' :
+                                                           'All mechanics') + '</option>');
+                valores.forEach(function(valor) {
+                    select.append(new Option(valor, valor));
+                });
+                select.val(currentVal).trigger('change.select2');
+            }
 
-            // Clear filters
-            $('#limpiarFiltros').click(function() {
-                $('#filtroCategoria, #filtroTipo, #filtroMecanico').val('');
-                $('#searchInput').val('');
-                aplicarFiltros();
+            // Eventos para filtros y actualización
+            tablaUltimos.on('draw.dt', actualizarFiltros);
+            tablaRepetidos.on('draw.dt', actualizarFiltros);
+
+            $('#filtroCategoria').on('change', function() {
+                var valor = this.value;
+                tablaUltimos.column(2).search(valor).draw();
+                tablaRepetidos.column(2).search(valor).draw();
             });
 
-            // Download data
-            $('#descargarDatos').click(function() {
-                var wb = XLSX.utils.book_new();
-                
-                // Convert data for latest maintenance
-                var wsData1 = [
-                    ['Date', 'Mileage', 'Category', 'Maintenance Type', 'Mechanic', 'Price', 'Next Maintenance', 'Next Mileage']
-                ];
-                ultimosMantenimientos.forEach(function(m) {
-                    wsData1.push([
-                        m.fecha,
-                        m.kilometraje,
-                        m.categoria,
-                        m.tipo_mantenimiento,
-                        m.mecanico,
-                        m.precio,
-                        m.fecha_proximo,
-                        m.proximo_km
-                    ]);
-                });
-                var ws1 = XLSX.utils.aoa_to_sheet(wsData1);
-                XLSX.utils.book_append_sheet(wb, ws1, "Latest Maintenance");
+            $('#filtroTipo').on('change', function() {
+                var valor = this.value;
+                tablaUltimos.column(3).search(valor).draw();
+                tablaRepetidos.column(3).search(valor).draw();
+            });
 
-                // Convert data for repeated maintenance
-                var wsData2 = [
-                    ['Date', 'Mileage', 'Category', 'Maintenance Type', 'Mechanic', 'Price', 'Next Maintenance', 'Next Mileage']
-                ];
-                mantenimientosRepetidos.forEach(function(m) {
-                    wsData2.push([
-                        m.fecha,
-                        m.kilometraje,
-                        m.categoria,
-                        m.tipo_mantenimiento,
-                        m.mecanico,
-                        m.precio,
-                        m.fecha_proximo,
-                        m.proximo_km
-                    ]);
-                });
-                var ws2 = XLSX.utils.aoa_to_sheet(wsData2);
-                XLSX.utils.book_append_sheet(wb, ws2, "Repeated Maintenance");
+            $('#filtroMecanico').on('change', function() {
+                var valor = this.value;
+                tablaUltimos.column(4).search(valor).draw();
+                tablaRepetidos.column(4).search(valor).draw();
+            });
 
-                // Save the file
-                XLSX.writeFile(wb, "maintenance_history.xlsx");
+            // Implementar búsqueda global que afecte a ambas tablas
+            $('#searchInput').on('keyup', function() {
+                var searchTerm = $(this).val();
+                tablaUltimos.search(searchTerm).draw();
+                tablaRepetidos.search(searchTerm).draw();
+            });
+
+            // Limpiar filtros
+            $('#limpiarFiltros').on('click', function() {
+                // Limpiar selecciones de Select2
+                $('#filtroCategoria, #filtroTipo, #filtroMecanico').val('').trigger('change');
+
+                // Limpiar búsqueda global
+                $('#searchInput').val('');
+
+                // Limpiar filtros de DataTable
+                tablaUltimos.search('').columns().search('').draw();
+                tablaRepetidos.search('').columns().search('').draw();
+            });
+
+            // When "Descargar Datos" is clicked, show the download options modal
+            $('#descargarDatos').on('click', function() {
+                var downloadModal = new bootstrap.Modal(document.getElementById('downloadModal'));
+                downloadModal.show();
+            });
+
+            // Function to generate and download CSV from both tables
+            function downloadCSV() {
+                var csv = '';
+                var headers = [];
+                $('#tablaMantenimientos thead th').each(function() {
+                    headers.push('"' + $(this).text().trim() + '"');
+                });
+                csv += headers.join(',') + "\n";
+
+                // Añadir datos de la primera tabla
+                $('#tablaMantenimientos tbody tr').each(function() {
+                    var row = [];
+                    $(this).find('td').each(function() {
+                        row.push('"' + $(this).text().trim() + '"');
+                    });
+                    csv += row.join(',') + "\n";
+                });
+
+                // Añadir datos de la segunda tabla
+                $('#tablaMantenimientosRepetidos tbody tr').each(function() {
+                    var row = [];
+                    $(this).find('td').each(function() {
+                        row.push('"' + $(this).text().trim() + '"');
+                    });
+                    csv += row.join(',') + "\n";
+                });
+
+                var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                var link = document.createElement("a");
+                var url = URL.createObjectURL(blob);
+                link.setAttribute("href", url);
+                link.setAttribute("download", "mantenimientos_{{ vehiculo.alias }}.csv");
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+
+            // CSV download event
+            $('#downloadCSV').on('click', function() {
+                downloadCSV();
+                var modalInstance = bootstrap.Modal.getInstance(document.getElementById('downloadModal'));
+                modalInstance.hide();
+            });
+
+            // XLSX download event using SheetJS
+            $('#downloadXLSX').on('click', function() {
+                // Crear una tabla temporal combinando ambas tablas para la exportación
+                var tempTable = document.createElement('table');
+                tempTable.id = 'tempTableForExport';
+                tempTable.style.display = 'none';
+                document.body.appendChild(tempTable);
+
+                // Copiar encabezados
+                var headerRow = document.createElement('tr');
+                $('#tablaMantenimientos thead th').each(function() {
+                    var th = document.createElement('th');
+                    th.textContent = $(this).text().trim();
+                    headerRow.appendChild(th);
+                });
+
+                var thead = document.createElement('thead');
+                thead.appendChild(headerRow);
+                tempTable.appendChild(thead);
+
+                // Copiar filas de ambas tablas
+                var tbody = document.createElement('tbody');
+
+                // Copiar filas de la primera tabla
+                $('#tablaMantenimientos tbody tr').each(function() {
+                    var newRow = document.createElement('tr');
+                    $(this).find('td').each(function() {
+                        var td = document.createElement('td');
+                        td.textContent = $(this).text().trim();
+                        newRow.appendChild(td);
+                    });
+                    tbody.appendChild(newRow);
+                });
+
+                // Copiar filas de la segunda tabla
+                $('#tablaMantenimientosRepetidos tbody tr').each(function() {
+                    var newRow = document.createElement('tr');
+                    $(this).find('td').each(function() {
+                        var td = document.createElement('td');
+                        td.textContent = $(this).text().trim();
+                        newRow.appendChild(td);
+                    });
+                    tbody.appendChild(newRow);
+                });
+
+                tempTable.appendChild(tbody);
+
+                // Create workbook from the temporary table
+                var wb = XLSX.utils.table_to_book(tempTable, {
+                    sheet: "Mantenimientos",
+                    raw: true // Preserve raw cell values
+                });
+
+                // Get worksheet and define date format (DD/MM/YYYY)
+                var ws = wb.Sheets["Mantenimientos"];
+                var dateFormat = "dd/mm/yyyy";
+
+                // Apply date format to columns A (0 - Fecha) and G (6 - Próximo Mantenimiento)
+                var range = XLSX.utils.decode_range(ws['!ref']);
+                for(var R = 1; R <= range.e.r; ++R) { // Skip header row
+                    [0, 6].forEach(function(C) {
+                        var cell = XLSX.utils.encode_cell({r:R, c:C});
+                        if(ws[cell]) ws[cell].z = dateFormat;
+                    });
+                }
+
+                // Write file with formatted dates
+                XLSX.writeFile(wb, "mantenimientos_{{ vehiculo.alias }}.xlsx");
+
+                // Eliminar la tabla temporal
+                document.body.removeChild(tempTable);
+
+                var modalInstance = bootstrap.Modal.getInstance(document.getElementById('downloadModal'));
+                modalInstance.hide();
             });
         });
     </script>
+    <!-- Modal for Download Options -->
+    <div class="modal fade" id="downloadModal" tabindex="-1" aria-labelledby="downloadModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="downloadModalLabel">Download Data</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+          </div>
+          <div class="modal-body text-center">
+            <p>Select the download format:</p>
+            <button id="downloadCSV" class="btn btn-primary mx-2">CSV</button>
+            <button id="downloadXLSX" class="btn btn-success mx-2">XLSX</button>
+          </div>
+        </div>
+      </div>
+    </div>
 </body>
 </html>

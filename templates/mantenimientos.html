@@ -104,7 +104,7 @@
 
         <div class="card">
             <div class="card-body">
-                <!-- Filtros -->
+                <!-- Filters -->
                 <div class="row mb-4">
                     <div class="col-md-4">
                         <label for="filtroCategoria" class="form-label">Category</label>
@@ -148,7 +148,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <!-- Esta tabla se llenará con JavaScript -->
+                        <!-- This table will be filled with JavaScript -->
                     </tbody>
                 </table>
 
@@ -167,7 +167,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <!-- Esta tabla se llenará con JavaScript -->
+                        <!-- This table will be filled with JavaScript -->
                     </tbody>
                 </table>
             </div>
@@ -184,28 +184,15 @@
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
+    <script id="mantenimientos-data" type="application/json">
+        {{ mantenimientos|tojson }}
+    </script>
     <script>
         $(document).ready(function() {
-            // Preparar los datos para dividir en dos tablas
-            var mantenimientos = [];
+            // Parse the data from the JSON script tag
+            var mantenimientos = JSON.parse(document.getElementById('mantenimientos-data').textContent);
 
-            {% for m in mantenimientos %}
-            mantenimientos.push({
-                fecha: "{{ m.fecha }}",
-                fecha_iso: "{{ m.fecha_iso }}",
-                kilometraje: {{ m.kilometraje }},
-                categoria: "{{ m.categoria }}",
-                tipo_mantenimiento: "{{ m.tipo_mantenimiento }}",
-                mecanico: "{{ m.mecanico }}",
-                precio: "{% if m.precio %}{{ m.precio|int }}{% endif %}",
-                fecha_proximo: "{{ m.fecha_proximo }}",
-                fecha_proximo_iso: "{{ m.fecha_proximo_iso|default('') }}",
-                proximo_km: {% if m.proximo_km %}{{ m.proximo_km }}{% else %}null{% endif %},
-                today_iso: "{{ today_iso }}"
-            });
-            {% endfor %}
-
-            // Ordenar por tipo de mantenimiento y fecha (más reciente primero)
+            // Sort by maintenance type and date (most recent first)
             mantenimientos.sort(function(a, b) {
                 if (a.tipo_mantenimiento === b.tipo_mantenimiento) {
                     return b.fecha_iso.localeCompare(a.fecha_iso);
@@ -213,7 +200,7 @@
                 return a.tipo_mantenimiento.localeCompare(b.tipo_mantenimiento);
             });
 
-            // Separar en últimos y repetidos
+            // Separate into latest and repeated
             var ultimosMantenimientos = [];
             var mantenimientosRepetidos = [];
             var tiposVistos = {};
@@ -227,12 +214,12 @@
                 }
             });
 
-            // Función para llenar una tabla con datos
-            function llenarTabla(tablaId, datos) {
-                var tbody = $(tablaId + ' tbody');
+            // Function to fill a table with data
+            function fillTable(tableId, data) {
+                var tbody = $(tableId + ' tbody');
                 tbody.empty();
 
-                datos.forEach(function(m) {
+                data.forEach(function(m) {
                     var row = '<tr>' +
                         '<td data-order="' + m.fecha_iso + '">' + m.fecha + '</td>' +
                         '<td>' + m.kilometraje + '</td>' +
@@ -251,22 +238,22 @@
                 });
             }
 
-            // Llenar ambas tablas
-            llenarTabla('#tablaMantenimientos', ultimosMantenimientos);
-            llenarTabla('#tablaMantenimientosRepetidos', mantenimientosRepetidos);
+            // Fill both tables
+            fillTable('#tablaMantenimientos', ultimosMantenimientos);
+            fillTable('#tablaMantenimientosRepetidos', mantenimientosRepetidos);
 
-            // Inicializar Select2 en los filtros
+            // Initialize Select2 on filters
             $('#filtroCategoria, #filtroTipo, #filtroMecanico').select2({
                 width: '100%',
                 placeholder: 'Select an option'
             });
 
-            // Inicializar DataTables
+            // Initialize DataTables
             var tablaUltimos = $('#tablaMantenimientos').DataTable({
                 language: {
-                    url: '//cdn.datatables.net/plug-ins/1.11.5/i18n/es-ES.json'
+                    url: '//cdn.datatables.net/plug-ins/1.11.5/i18n/en-GB.json'
                 },
-                order: [[6, 'asc']],  // Sort by column 6 (Próximo Mantenimiento) ascending
+                order: [[6, 'asc']],  // Sort by column 6 (Next Maintenance) ascending
                 pageLength: 100,
                 columnDefs: [
                     { orderable: true, targets: '_all' },
@@ -276,7 +263,7 @@
                         type: 'date-eu'
                     },
                     {
-                        targets: 6,  // Próximo Mantenimiento column
+                        targets: 6,  // Next Maintenance column
                         type: 'date-eu',
                         orderData: [6],
                         createdCell: function(cell, cellData, rowData, rowIndex, colIndex) {
@@ -284,18 +271,18 @@
                         }
                     },
                     {
-                        targets: 7,  // Próximo Kilometraje column
+                        targets: 7,  // Next Mileage column
                         type: 'num'
                     }
                 ],
                 initComplete: function() {
-                    actualizarFiltros();
+                    updateFilters();
                 }
             });
 
             var tablaRepetidos = $('#tablaMantenimientosRepetidos').DataTable({
                 language: {
-                    url: '//cdn.datatables.net/plug-ins/1.11.5/i18n/es-ES.json'
+                    url: '//cdn.datatables.net/plug-ins/1.11.5/i18n/en-GB.json'
                 },
                 order: [[0, 'desc']],  // Sort by date descending
                 pageLength: 100,
@@ -321,100 +308,100 @@
                 ]
             });
 
-            // Función para actualizar opciones de los filtros
-            function actualizarFiltros() {
-                // Recolectar datos de ambas tablas
-                var datosAplicados = tablaUltimos.rows({ search: 'applied' }).data();
-                var datosAplicadosRepetidos = tablaRepetidos.rows({ search: 'applied' }).data();
+            // Function to update filter options
+            function updateFilters() {
+                // Collect data from both tables
+                var appliedData = tablaUltimos.rows({ search: 'applied' }).data();
+                var appliedDataRepeated = tablaRepetidos.rows({ search: 'applied' }).data();
 
-                var tipos = new Set();
-                var mecanicos = new Set();
+                var types = new Set();
+                var mechanics = new Set();
 
-                // Procesar datos de la primera tabla
-                datosAplicados.each(function(row) {
-                    tipos.add(row[3]);
-                    mecanicos.add(row[4]);
+                // Process data from the first table
+                appliedData.each(function(row) {
+                    types.add(row[3]);
+                    mechanics.add(row[4]);
                 });
 
-                // Procesar datos de la segunda tabla
-                datosAplicadosRepetidos.each(function(row) {
-                    tipos.add(row[3]);
-                    mecanicos.add(row[4]);
+                // Process data from the second table
+                appliedDataRepeated.each(function(row) {
+                    types.add(row[3]);
+                    mechanics.add(row[4]);
                 });
 
-                // Para Categoría, usar datos de todas las filas
-                var datosTodos = tablaUltimos.rows().data();
-                var datosTodosRepetidos = tablaRepetidos.rows().data();
-                var todasCategorias = new Set();
+                // For Category, use data from all rows
+                var allData = tablaUltimos.rows().data();
+                var allDataRepeated = tablaRepetidos.rows().data();
+                var allCategories = new Set();
 
-                datosTodos.each(function(row) {
-                    todasCategorias.add(row[2]);
+                allData.each(function(row) {
+                    allCategories.add(row[2]);
                 });
 
-                datosTodosRepetidos.each(function(row) {
-                    todasCategorias.add(row[2]);
+                allDataRepeated.each(function(row) {
+                    allCategories.add(row[2]);
                 });
 
-                actualizarSelect('#filtroCategoria', Array.from(todasCategorias).sort());
-                actualizarSelect('#filtroTipo', Array.from(tipos).sort());
-                actualizarSelect('#filtroMecanico', Array.from(mecanicos).sort());
+                updateSelect('#filtroCategoria', Array.from(allCategories).sort());
+                updateSelect('#filtroTipo', Array.from(types).sort());
+                updateSelect('#filtroMecanico', Array.from(mechanics).sort());
             }
 
-            function actualizarSelect(selector, valores) {
+            function updateSelect(selector, values) {
                 var select = $(selector);
                 var currentVal = select.val();
                 select.empty().append('<option value="">' + (selector === '#filtroCategoria' ? 'All categories' :
                                                            selector === '#filtroTipo' ? 'All types' :
                                                            'All mechanics') + '</option>');
-                valores.forEach(function(valor) {
-                    select.append(new Option(valor, valor));
+                values.forEach(function(value) {
+                    select.append(new Option(value, value));
                 });
                 select.val(currentVal).trigger('change.select2');
             }
 
-            // Eventos para filtros y actualización
-            tablaUltimos.on('draw.dt', actualizarFiltros);
-            tablaRepetidos.on('draw.dt', actualizarFiltros);
+            // Events for filters and update
+            tablaUltimos.on('draw.dt', updateFilters);
+            tablaRepetidos.on('draw.dt', updateFilters);
 
             $('#filtroCategoria').on('change', function() {
-                var valor = this.value;
-                tablaUltimos.column(2).search(valor).draw();
-                tablaRepetidos.column(2).search(valor).draw();
+                var value = this.value;
+                tablaUltimos.column(2).search(value).draw();
+                tablaRepetidos.column(2).search(value).draw();
             });
 
             $('#filtroTipo').on('change', function() {
-                var valor = this.value;
-                tablaUltimos.column(3).search(valor).draw();
-                tablaRepetidos.column(3).search(valor).draw();
+                var value = this.value;
+                tablaUltimos.column(3).search(value).draw();
+                tablaRepetidos.column(3).search(value).draw();
             });
 
             $('#filtroMecanico').on('change', function() {
-                var valor = this.value;
-                tablaUltimos.column(4).search(valor).draw();
-                tablaRepetidos.column(4).search(valor).draw();
+                var value = this.value;
+                tablaUltimos.column(4).search(value).draw();
+                tablaRepetidos.column(4).search(value).draw();
             });
 
-            // Implementar búsqueda global que afecte a ambas tablas
+            // Implement global search that affects both tables
             $('#searchInput').on('keyup', function() {
                 var searchTerm = $(this).val();
                 tablaUltimos.search(searchTerm).draw();
                 tablaRepetidos.search(searchTerm).draw();
             });
 
-            // Limpiar filtros
+            // Clear filters
             $('#limpiarFiltros').on('click', function() {
-                // Limpiar selecciones de Select2
+                // Clear Select2 selections
                 $('#filtroCategoria, #filtroTipo, #filtroMecanico').val('').trigger('change');
 
-                // Limpiar búsqueda global
+                // Clear global search
                 $('#searchInput').val('');
 
-                // Limpiar filtros de DataTable
+                // Clear DataTable filters
                 tablaUltimos.search('').columns().search('').draw();
                 tablaRepetidos.search('').columns().search('').draw();
             });
 
-            // When "Descargar Datos" is clicked, show the download options modal
+            // When "Download Data" is clicked, show the download options modal
             $('#descargarDatos').on('click', function() {
                 var downloadModal = new bootstrap.Modal(document.getElementById('downloadModal'));
                 downloadModal.show();
@@ -429,7 +416,7 @@
                 });
                 csv += headers.join(',') + "\n";
 
-                // Añadir datos de la primera tabla
+                // Add data from the first table
                 $('#tablaMantenimientos tbody tr').each(function() {
                     var row = [];
                     $(this).find('td').each(function() {
@@ -438,7 +425,7 @@
                     csv += row.join(',') + "\n";
                 });
 
-                // Añadir datos de la segunda tabla
+                // Add data from the second table
                 $('#tablaMantenimientosRepetidos tbody tr').each(function() {
                     var row = [];
                     $(this).find('td').each(function() {
@@ -451,7 +438,7 @@
                 var link = document.createElement("a");
                 var url = URL.createObjectURL(blob);
                 link.setAttribute("href", url);
-                link.setAttribute("download", "mantenimientos_{{ vehiculo.alias }}.csv");
+                link.setAttribute("download", "maintenance_{{ vehiculo.alias }}.csv");
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
@@ -466,13 +453,13 @@
 
             // XLSX download event using SheetJS
             $('#downloadXLSX').on('click', function() {
-                // Crear una tabla temporal combinando ambas tablas para la exportación
+                // Create a temporary table combining both tables for export
                 var tempTable = document.createElement('table');
                 tempTable.id = 'tempTableForExport';
                 tempTable.style.display = 'none';
                 document.body.appendChild(tempTable);
 
-                // Copiar encabezados
+                // Copy headers
                 var headerRow = document.createElement('tr');
                 $('#tablaMantenimientos thead th').each(function() {
                     var th = document.createElement('th');
@@ -484,10 +471,10 @@
                 thead.appendChild(headerRow);
                 tempTable.appendChild(thead);
 
-                // Copiar filas de ambas tablas
+                // Copy rows from both tables
                 var tbody = document.createElement('tbody');
 
-                // Copiar filas de la primera tabla
+                // Copy rows from the first table
                 $('#tablaMantenimientos tbody tr').each(function() {
                     var newRow = document.createElement('tr');
                     $(this).find('td').each(function() {
@@ -498,7 +485,7 @@
                     tbody.appendChild(newRow);
                 });
 
-                // Copiar filas de la segunda tabla
+                // Copy rows from the second table
                 $('#tablaMantenimientosRepetidos tbody tr').each(function() {
                     var newRow = document.createElement('tr');
                     $(this).find('td').each(function() {
@@ -513,15 +500,15 @@
 
                 // Create workbook from the temporary table
                 var wb = XLSX.utils.table_to_book(tempTable, {
-                    sheet: "Mantenimientos",
+                    sheet: "Maintenance",
                     raw: true // Preserve raw cell values
                 });
 
                 // Get worksheet and define date format (DD/MM/YYYY)
-                var ws = wb.Sheets["Mantenimientos"];
+                var ws = wb.Sheets["Maintenance"];
                 var dateFormat = "dd/mm/yyyy";
 
-                // Apply date format to columns A (0 - Fecha) and G (6 - Próximo Mantenimiento)
+                // Apply date format to columns A (0 - Date) and G (6 - Next Maintenance)
                 var range = XLSX.utils.decode_range(ws['!ref']);
                 for(var R = 1; R <= range.e.r; ++R) { // Skip header row
                     [0, 6].forEach(function(C) {
@@ -531,9 +518,9 @@
                 }
 
                 // Write file with formatted dates
-                XLSX.writeFile(wb, "mantenimientos_{{ vehiculo.alias }}.xlsx");
+                XLSX.writeFile(wb, "maintenance_{{ vehiculo.alias }}.xlsx");
 
-                // Eliminar la tabla temporal
+                // Remove the temporary table
                 document.body.removeChild(tempTable);
 
                 var modalInstance = bootstrap.Modal.getInstance(document.getElementById('downloadModal'));
@@ -547,7 +534,7 @@
         <div class="modal-content">
           <div class="modal-header">
             <h5 class="modal-title" id="downloadModalLabel">Download Data</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body text-center">
             <p>Select the download format:</p>

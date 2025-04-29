@@ -22,14 +22,14 @@ Web application built with Flask for logging and tracking vehicle maintenance.
 
 1. Clone the repository:
    ```
-   git clone https://github.com/mauricio222/vehicle-maintenance-app-english.git
-   cd vehicle-maintenance-app-english
+   git clone https://github.com/[your-username]/mantenimiento-vehiculos.git
+   cd mantenimiento-vehiculos
    ```
 
 2. Create and activate a virtual environment:
    ```
    python -m venv .venv
-   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+   source .venv/bin/activate  # On Windows: .venv\\Scripts\\activate
    ```
 
 3. Install dependencies:
@@ -73,7 +73,7 @@ Web application built with Flask for logging and tracking vehicle maintenance.
 
 ## License
 
-This project is licensed under the MIT License.
+This project is licensed under the [MIT License](LICENSE).
 
 ## Contact
 

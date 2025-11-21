@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script>
+        // For screens 1440px or less, set a zoomed-out view so that all columns are visible by default
+        if (window.matchMedia("(max-width: 1440px)").matches) {
+            var viewport = document.querySelector("meta[name=viewport]");
+            if (viewport) {
+                viewport.setAttribute("content", "width=device-width, initial-scale=0.5");
+            }
+        }
+    </script>
+    <title>Maintenance - {{ vehiculo.alias }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+    <style>
+        #tablaMantenimientos {
+            border: none;
+        }
+
+        #tablaMantenimientos th,
+        #tablaMantenimientos td {
+            border: none;
+        }
+
+        #tablaMantenimientos thead th {
+            border-bottom: 2px solid #dee2e6;
+        }
+
+        /* Remove card borders */
+        .card {
+            border: none;
+            box-shadow: none;
+        }
+
+        /* Remove DataTable controls borders */
+        .dataTables_wrapper .row:first-child,
+        .dataTables_wrapper .row:last-child {
+            border: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Remove spacing between elements */
+        .dataTables_wrapper .row {
+            margin: 0;
+        }
+
+        /* Center main container */
+        .container.mt-4 {
+            margin-left: auto !important;
+            margin-right: auto !important;
+            text-align: left;
+        }
+
+        @media (max-width: 1440px) {
+            /* Left align main container on devices with widths up to 1440px */
+            .container.mt-4 {
+                margin-left: 0 !important;
+                margin-right: auto !important;
+            }
+        }
+
+        /* Style for the search box */
+        .search-container {
+            margin-bottom: 20px;
+        }
+
+        #searchInput {
+            width: 100%;
+            padding: 8px 12px;
+            border-radius: 4px;
+            border: 1px solid #ced4da;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="mb-2">Maintenance - {{ vehiculo.alias }}</h1>
+                <p class="mb-0 text-muted">{{ vehiculo.marca }} {{ vehiculo.modelo }} {{ vehiculo.anio }}</p>
+                <p class="mb-0 text-muted small">
+                    Last Mileage:
+                    <span class="fw-bold">
+                        {% if vehiculo.ultimo_mileage is not none %}
+                            {{ "{:,.0f}".format(vehiculo.ultimo_mileage).replace(',', '.') }} mi
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </span>
+                </p>
+            </div>
+            <div>
+                <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Back</a>
+                {% if g.user %}
+                    <a href="{{ url_for('logout') }}" class="btn btn-danger ms-2">Logout ({{ g.user.username }})</a>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-body">
+                <!-- Filters -->
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <label for="filtroCategoria" class="form-label">Category</label>
+                        <select id="filtroCategoria" class="form-select">
+                            <option value="">All categories</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="filtroTipo" class="form-label">Maintenance Type</label>
+                        <select id="filtroTipo" class="form-select">
+                            <option value="">All types</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="filtroMecanico" class="form-label">Mechanic</label>
+                        <select id="filtroMecanico" class="form-select">
+                            <option value="">All mechanics</option>
+                        </select>
+                    </div>
+                    <div class="col-md-8 mt-3">
+                        <label for="searchInput" class="form-label">Search:</label>
+                        <input type="text" id="searchInput" class="form-control" placeholder="Search in all fields...">
+                    </div>
+                    <div class="col-md-4 mt-3 d-flex align-items-end">
+                        <button id="limpiarFiltros" class="btn btn-secondary">Clear Filters</button>
+                    </div>
+                </div>
+
+                <h4 class="mb-3">Recent Maintenance</h4>
+                <table id="tablaMantenimientos" class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Mileage</th>
+                            <th>Category</th>
+                            <th>Maintenance Type</th>
+                            <th>Mechanic</th>
+                            <th>Price</th>
+                            <th>Next Maintenance</th>
+                            <th>Next Mileage</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- This table will be filled with JavaScript -->
+                    </tbody>
+                </table>
+
+                <h4 class="mt-5 mb-3">Repeated Maintenance</h4>
+                <table id="tablaMantenimientosRepetidos" class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Mileage</th>
+                            <th>Category</th>
+                            <th>Maintenance Type</th>
+                            <th>Mechanic</th>
+                            <th>Price</th>
+                            <th>Next Maintenance</th>
+                            <th>Next Mileage</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- This table will be filled with JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="mt-3 text-center">
+            <button id="descargarDatos" class="btn btn-primary">Download Data</button>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap5.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <script id="mantenimientos-data" type="application/json">
+        {{ mantenimientos|tojson }}
+    </script>
+    <script id="categorias-data" type="application/json">
+        {{ categorias_unicas|tojson }}
+    </script>
+    <script id="tipos-data" type="application/json">
+        {{ tipos_unicos|tojson }}
+    </script>
+    <script id="mecanicos-data" type="application/json">
+        {{ mecanicos_unicos|tojson }}
+    </script>
+    <script>
+        $(document).ready(function() {
+            // Parse the data from the JSON script tags
+            var mantenimientos = JSON.parse(document.getElementById('mantenimientos-data').textContent);
+            var categoriasUnicas = JSON.parse(document.getElementById('categorias-data').textContent);
+            var tiposUnicos = JSON.parse(document.getElementById('tipos-data').textContent);
+            var mecanicosUnicos = JSON.parse(document.getElementById('mecanicos-data').textContent);
+
+            // Sort by maintenance type and date (most recent first)
+            mantenimientos.sort(function(a, b) {
+                if (a.tipo_mantenimiento === b.tipo_mantenimiento) {
+                    return b.fecha_iso.localeCompare(a.fecha_iso);
+                }
+                return a.tipo_mantenimiento.localeCompare(b.tipo_mantenimiento);
+            });
+
+            // Separate into latest and repeated
+            var ultimosMantenimientos = [];
+            var mantenimientosRepetidos = [];
+            var tiposVistos = {};
+
+            mantenimientos.forEach(function(m) {
+                if (!tiposVistos[m.tipo_mantenimiento]) {
+                    ultimosMantenimientos.push(m);
+                    tiposVistos[m.tipo_mantenimiento] = true;
+                } else {
+                    mantenimientosRepetidos.push(m);
+                }
+            });
+
+            // Get today's date in ISO format for comparison
+            var today = new Date().toISOString().split('T')[0];
+
+            // Convert data to array format for DataTables
+            function convertToTableData(data) {
+                return data.map(function(m) {
+                    return [
+                        m.fecha,           // 0
+                        m.mileage,         // 1
+                        m.categoria,       // 2
+                        m.tipo_mantenimiento, // 3
+                        m.mecanico,        // 4
+                        m.precio,          // 5
+                        m.fecha_proximo,   // 6
+                        m.proximo_mileage || '', // 7
+                        m.fecha_iso,       // 8 (hidden, for sorting)
+                        m.fecha_proximo_iso || '', // 9 (hidden, for sorting)
+                        today              // 10 (hidden, for comparison)
+                    ];
+                });
+            }
+
+            var ultimosData = convertToTableData(ultimosMantenimientos);
+            var repetidosData = convertToTableData(mantenimientosRepetidos);
+
+            // Initialize DataTables variables first
+            var tablaUltimos = null;
+            var tablaRepetidos = null;
+
+            tablaUltimos = $('#tablaMantenimientos').DataTable({
+                data: ultimosData,
+                columns: [
+                    { title: "Date", data: 0 },
+                    { title: "Mileage", data: 1 },
+                    { title: "Category", data: 2 },
+                    { title: "Maintenance Type", data: 3 },
+                    { title: "Mechanic", data: 4 },
+                    { title: "Price", data: 5 },
+                    { title: "Next Maintenance", data: 6 },
+                    { title: "Next Mileage", data: 7 },
+                    { title: "Date ISO", data: 8, visible: false },
+                    { title: "Next Date ISO", data: 9, visible: false },
+                    { title: "Today ISO", data: 10, visible: false }
+                ],
+                language: {
+                    "emptyTable": "No data available in table",
+                    "info": "Showing _START_ to _END_ of _TOTAL_ entries",
+                    "infoEmpty": "Showing 0 to 0 of 0 entries",
+                    "infoFiltered": "(filtered from _MAX_ total entries)",
+                    "lengthMenu": "Show _MENU_ entries",
+                    "loadingRecords": "Loading...",
+                    "processing": "Processing...",
+                    "search": "Search:",
+                    "zeroRecords": "No matching records found",
+                    "paginate": {
+                        "first": "First",
+                        "last": "Last",
+                        "next": "Next",
+                        "previous": "Previous"
+                    }
+                },
+                order: [[9, 'asc']],  // Sort by hidden column 9 (Next Date ISO) ascending
+                pageLength: 100,
+                columnDefs: [
+                    { orderable: true, targets: '_all' },
+                    { targets: 2, visible: false },
+                    {
+                        targets: 0,
+                        type: 'date',
+                        render: function(data, type, row) {
+                            if (type === 'sort') return row[8]; // Use ISO date for sorting
+                            return data;
+                        }
+                    },
+                    {
+                        targets: 6,  // Next Maintenance column
+                        type: 'date',
+                        render: function(data, type, row) {
+                            if (type === 'sort') return row[9] || '9999-12-31'; // Use ISO date for sorting
+                            if (type === 'display' && row[9] && row[9] < row[10]) {
+                                return '<span class="text-danger fw-bold">' + data + '</span>';
+                            }
+                            return data;
+                        }
+                    },
+                    {
+                        targets: 7,  // Next Mileage column
+                        type: 'num',
+                        render: function(data, type, row) {
+                            if (type === 'display' && data && parseFloat(row[1]) > parseFloat(data)) {
+                                return '<span class="text-danger fw-bold">' + data + '</span>';
+                            }
+                            return data;
+                        }
+                    }
+                ]
+            });
+
+            tablaRepetidos = $('#tablaMantenimientosRepetidos').DataTable({
+                data: repetidosData,
+                columns: [
+                    { title: "Date", data: 0 },
+                    { title: "Mileage", data: 1 },
+                    { title: "Category", data: 2 },
+                    { title: "Maintenance Type", data: 3 },
+                    { title: "Mechanic", data: 4 },
+                    { title: "Price", data: 5 },
+                    { title: "Next Maintenance", data: 6 },
+                    { title: "Next Mileage", data: 7 },
+                    { title: "Date ISO", data: 8, visible: false },
+                    { title: "Next Date ISO", data: 9, visible: false },
+                    { title: "Today ISO", data: 10, visible: false }
+                ],
+                language: {
+                    "emptyTable": "No data available in table",
+                    "info": "Showing _START_ to _END_ of _TOTAL_ entries",
+                    "infoEmpty": "Showing 0 to 0 of 0 entries",
+                    "infoFiltered": "(filtered from _MAX_ total entries)",
+                    "lengthMenu": "Show _MENU_ entries",
+                    "loadingRecords": "Loading...",
+                    "processing": "Processing...",
+                    "search": "Search:",
+                    "zeroRecords": "No matching records found",
+                    "paginate": {
+                        "first": "First",
+                        "last": "Last",
+                        "next": "Next",
+                        "previous": "Previous"
+                    }
+                },
+                order: [[8, 'desc']],  // Sort by hidden column 8 (Date ISO) descending
+                pageLength: 100,
+                columnDefs: [
+                    { orderable: true, targets: '_all' },
+                    { targets: 2, visible: false },
+                    {
+                        targets: 0,
+                        type: 'date',
+                        render: function(data, type, row) {
+                            if (type === 'sort') return row[8]; // Use ISO date for sorting
+                            return data;
+                        }
+                    },
+                    {
+                        targets: 6,  // Next Maintenance column
+                        type: 'date',
+                        render: function(data, type, row) {
+                            if (type === 'sort') return row[9] || '9999-12-31'; // Use ISO date for sorting
+                            if (type === 'display' && row[9] && row[9] < row[10]) {
+                                return '<span class="text-danger fw-bold">' + data + '</span>';
+                            }
+                            return data;
+                        }
+                    },
+                    {
+                        targets: 7,  // Next Mileage column
+                        type: 'num',
+                        render: function(data, type, row) {
+                            if (type === 'display' && data && parseFloat(row[1]) > parseFloat(data)) {
+                                return '<span class="text-danger fw-bold">' + data + '</span>';
+                            }
+                            return data;
+                        }
+                    }
+                ]
+            });
+
+            // Now both tables are initialized, populate filters with backend data
+            function populateFilters() {
+                // Populate Category filter
+                var categorySelect = $('#filtroCategoria');
+                categorySelect.empty().append('<option value="">All categories</option>');
+                if (categoriasUnicas && categoriasUnicas.length > 0) {
+                    categoriasUnicas.forEach(function(cat) {
+                        categorySelect.append(new Option(cat, cat));
+                    });
+                }
+
+                // Populate Type filter
+                var typeSelect = $('#filtroTipo');
+                typeSelect.empty().append('<option value="">All types</option>');
+                if (tiposUnicos && tiposUnicos.length > 0) {
+                    tiposUnicos.forEach(function(type) {
+                        typeSelect.append(new Option(type, type));
+                    });
+                }
+
+                // Populate Mechanic filter
+                var mechanicSelect = $('#filtroMecanico');
+                mechanicSelect.empty().append('<option value="">All mechanics</option>');
+                if (mecanicosUnicos && mecanicosUnicos.length > 0) {
+                    mecanicosUnicos.forEach(function(mech) {
+                        mechanicSelect.append(new Option(mech, mech));
+                    });
+                }
+            }
+
+            // Call populateFilters after both tables are fully initialized
+            populateFilters();
+
+            // Use a small delay to ensure DOM is fully updated before initializing Select2
+            setTimeout(function() {
+                // Initialize Select2 on filters
+                $('#filtroCategoria, #filtroTipo, #filtroMecanico').select2({
+                    width: '100%',
+                    placeholder: 'Select an option',
+                    allowClear: true,
+                    minimumResultsForSearch: -1  // Disable search box for small lists
+                });
+            }, 100);
+
+            $('#filtroCategoria').on('change', function() {
+                var value = this.value;
+                if (tablaUltimos && tablaRepetidos) {
+                    tablaUltimos.column(2).search(value).draw();
+                    tablaRepetidos.column(2).search(value).draw();
+                }
+            });
+
+            $('#filtroTipo').on('change', function() {
+                var value = this.value;
+                if (tablaUltimos && tablaRepetidos) {
+                    tablaUltimos.column(3).search(value).draw();
+                    tablaRepetidos.column(3).search(value).draw();
+                }
+            });
+
+            $('#filtroMecanico').on('change', function() {
+                var value = this.value;
+                if (tablaUltimos && tablaRepetidos) {
+                    tablaUltimos.column(4).search(value).draw();
+                    tablaRepetidos.column(4).search(value).draw();
+                }
+            });
+
+            // Implement global search that affects both tables
+            $('#searchInput').on('keyup', function() {
+                var searchTerm = $(this).val();
+                if (tablaUltimos && tablaRepetidos) {
+                    tablaUltimos.search(searchTerm).draw();
+                    tablaRepetidos.search(searchTerm).draw();
+                }
+            });
+
+            // Clear filters
+            $('#limpiarFiltros').on('click', function() {
+                // Clear Select2 selections
+                $('#filtroCategoria, #filtroTipo, #filtroMecanico').val('').trigger('change');
+
+                // Clear global search
+                $('#searchInput').val('');
+
+                // Clear DataTable filters
+                if (tablaUltimos && tablaRepetidos) {
+                    tablaUltimos.search('').columns().search('').draw();
+                    tablaRepetidos.search('').columns().search('').draw();
+                }
+            });
+
+            // When "Download Data" is clicked, show the download options modal
+            $('#descargarDatos').on('click', function() {
+                var downloadModal = new bootstrap.Modal(document.getElementById('downloadModal'));
+                downloadModal.show();
+            });
+
+            // Function to generate and download CSV from both tables
+            function downloadCSV() {
+                var csv = '';
+                var headers = [];
+                $('#tablaMantenimientos thead th').each(function() {
+                    headers.push('"' + $(this).text().trim() + '"');
+                });
+                csv += headers.join(',') + "\n";
+
+                // Add data from the first table
+                $('#tablaMantenimientos tbody tr').each(function() {
+                    var row = [];
+                    $(this).find('td').each(function() {
+                        row.push('"' + $(this).text().trim() + '"');
+                    });
+                    csv += row.join(',') + "\n";
+                });
+
+                // Add data from the second table
+                $('#tablaMantenimientosRepetidos tbody tr').each(function() {
+                    var row = [];
+                    $(this).find('td').each(function() {
+                        row.push('"' + $(this).text().trim() + '"');
+                    });
+                    csv += row.join(',') + "\n";
+                });
+
+                var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                var link = document.createElement("a");
+                var url = URL.createObjectURL(blob);
+                link.setAttribute("href", url);
+                link.setAttribute("download", "maintenance_{{ vehiculo.alias }}.csv");
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+
+            // CSV download event
+            $('#downloadCSV').on('click', function() {
+                downloadCSV();
+                var modalInstance = bootstrap.Modal.getInstance(document.getElementById('downloadModal'));
+                modalInstance.hide();
+            });
+
+            // XLSX download event using SheetJS
+            $('#downloadXLSX').on('click', function() {
+                // Create a temporary table combining both tables for export
+                var tempTable = document.createElement('table');
+                tempTable.id = 'tempTableForExport';
+                tempTable.style.display = 'none';
+                document.body.appendChild(tempTable);
+
+                // Copy headers
+                var headerRow = document.createElement('tr');
+                $('#tablaMantenimientos thead th').each(function() {
+                    var th = document.createElement('th');
+                    th.textContent = $(this).text().trim();
+                    headerRow.appendChild(th);
+                });
+
+                var thead = document.createElement('thead');
+                thead.appendChild(headerRow);
+                tempTable.appendChild(thead);
+
+                // Copy rows from both tables
+                var tbody = document.createElement('tbody');
+
+                // Copy rows from the first table
+                $('#tablaMantenimientos tbody tr').each(function() {
+                    var newRow = document.createElement('tr');
+                    $(this).find('td').each(function() {
+                        var td = document.createElement('td');
+                        td.textContent = $(this).text().trim();
+                        newRow.appendChild(td);
+                    });
+                    tbody.appendChild(newRow);
+                });
+
+                // Copy rows from the second table
+                $('#tablaMantenimientosRepetidos tbody tr').each(function() {
+                    var newRow = document.createElement('tr');
+                    $(this).find('td').each(function() {
+                        var td = document.createElement('td');
+                        td.textContent = $(this).text().trim();
+                        newRow.appendChild(td);
+                    });
+                    tbody.appendChild(newRow);
+                });
+
+                tempTable.appendChild(tbody);
+
+                // Create workbook from the temporary table
+                var wb = XLSX.utils.table_to_book(tempTable, {
+                    sheet: "Maintenance",
+                    raw: true // Preserve raw cell values
+                });
+
+                // Get worksheet and define date format (DD/MM/YYYY)
+                var ws = wb.Sheets["Maintenance"];
+                var dateFormat = "dd/mm/yyyy";
+
+                // Apply date format to columns A (0 - Date) and G (6 - Next Maintenance)
+                var range = XLSX.utils.decode_range(ws['!ref']);
+                for(var R = 1; R <= range.e.r; ++R) { // Skip header row
+                    [0, 6].forEach(function(C) {
+                        var cell = XLSX.utils.encode_cell({r:R, c:C});
+                        if(ws[cell]) ws[cell].z = dateFormat;
+                    });
+                }
+
+                // Write file with formatted dates
+                XLSX.writeFile(wb, "maintenance_{{ vehiculo.alias }}.xlsx");
+
+                // Remove the temporary table
+                document.body.removeChild(tempTable);
+
+                var modalInstance = bootstrap.Modal.getInstance(document.getElementById('downloadModal'));
+                modalInstance.hide();
+            });
+        });
+    </script>
+    <!-- Modal for Download Options -->
+    <div class="modal fade" id="downloadModal" tabindex="-1" aria-labelledby="downloadModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="downloadModalLabel">Download Data</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body text-center">
+            <p>Select the download format:</p>
+            <button id="downloadCSV" class="btn btn-primary mx-2">CSV</button>
+            <button id="downloadXLSX" class="btn btn-success mx-2">XLSX</button>
+          </div>
+        </div>
+      </div>
+    </div>
+</body>
+</html>

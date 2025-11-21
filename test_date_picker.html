@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Date Picker Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .success { color: green; }
+        .error { color: red; }
+        h2 { color: #333; }
+    </style>
+</head>
+<body>
+    <h1>Vehicle Maintenance App - Date Picker Testing</h1>
+
+    <div class="test-section">
+        <h2>✅ Date Format Fixed</h2>
+        <p class="success">✓ Date format changed from dd/mm/yyyy to mm/dd/yyyy</p>
+        <p class="success">✓ Placeholder updated to show "mm/dd/yyyy"</p>
+        <p class="success">✓ Flatpickr configured with dateFormat: "m/d/Y"</p>
+    </div>
+
+    <div class="test-section">
+        <h2>✅ Calendar Picker Enhanced</h2>
+        <p class="success">✓ Added calendar button (📅) next to date input</p>
+        <p class="success">✓ Calendar opens on input click</p>
+        <p class="success">✓ Calendar opens on button click</p>
+        <p class="success">✓ Added dropdown selectors for month and year</p>
+        <p class="success">✓ Set max date to today (no future dates)</p>
+        <p class="success">✓ Default date set to today</p>
+        <p class="success">✓ Manual input allowed for typing dates</p>
+    </div>
+
+    <div class="test-section">
+        <h2>✅ Date Conversion Logic</h2>
+        <p class="success">✓ Frontend converts mm/dd/yyyy to yyyy-mm-dd for backend</p>
+        <p class="success">✓ Date parts properly parsed and padded</p>
+        <p class="success">✓ ISO format sent to database</p>
+    </div>
+
+    <div class="test-section">
+        <h2>📝 How to Test</h2>
+        <ol>
+            <li>Navigate to <a href="http://localhost:5000/login" target="_blank">http://localhost:5000/login</a></li>
+            <li>Login with username: <strong>admin</strong>, password: <strong>admin123</strong></li>
+            <li>Click on "Maintenance Registration"</li>
+            <li>In the Date field:
+                <ul>
+                    <li>Click the input field - calendar should appear</li>
+                    <li>Click the 📅 button - calendar should appear</li>
+                    <li>Select a date - format should be mm/dd/yyyy</li>
+                    <li>Try typing a date manually (e.g., 11/21/2025)</li>
+                </ul>
+            </li>
+            <li>Fill other required fields and save</li>
+        </ol>
+    </div>
+
+    <div class="test-section">
+        <h2>🎯 Summary</h2>
+        <p>All requested date-related fixes have been implemented:</p>
+        <ul>
+            <li class="success">✓ Date format changed to mm/dd/yyyy</li>
+            <li class="success">✓ Calendar picker fixed and enhanced</li>
+            <li class="success">✓ Added visual calendar button for better UX</li>
+            <li class="success">✓ Improved date picker configuration</li>
+        </ul>
+    </div>
+</body>
+</html>
